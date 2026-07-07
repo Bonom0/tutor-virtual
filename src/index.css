@@ -1,0 +1,35 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@theme {
+  /* Design system: "Anotacoes na margem" - a tutor commenting on your code */
+  --color-chalk: #F3F6F4;       /* page background, cool off-white (not cream) */
+  --color-graphite: #1E2530;    /* primary ink / text, blue-tinted near-black */
+  --color-graphite-soft: #4B5563;
+  --color-tutor: #1B7A6B;       /* primary accent - teal, "the tutor's voice" */
+  --color-tutor-dark: #145A4F;
+  --color-marker: #E4572E;      /* annotation coral - margin notes, highlights */
+  --color-progress: #8BC63F;    /* adaptive/correct-answer indicator, used sparingly */
+  --color-slate: #232B36;       /* dark code-panel surface */
+  --color-slate-line: #2E3947;
+
+  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+body {
+  background-color: var(--color-chalk);
+  color: var(--color-graphite);
+  font-family: var(--font-body);
+}
+
+.annotation-thread {
+  border-top: 2px dotted var(--color-marker);
+  opacity: 0.6;
+}
+
+::selection {
+  background: var(--color-marker);
+  color: white;
+}
