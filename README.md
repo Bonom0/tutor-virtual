@@ -10,6 +10,7 @@ Stack atual: **React + TypeScript + Vite + Tailwind CSS v4 + Firebase (Auth + Fi
 src/
   pages/
     Login.tsx       -> tela de login (email, criar conta, Google)
+    Chat.tsx        -> chat conectado ao backend FastAPI
     Question.tsx    -> tela de pergunta/exercicio
   context/
     AuthContext.tsx -> estado de autenticacao global (useAuth())
@@ -21,9 +22,22 @@ src/
 
 Rotas:
 - `/` -> Login
+- `/chat` -> chat com o tutor virtual (protegida, exige login)
 - `/pergunta` -> tela de pergunta (protegida, exige login)
 
 ## Como rodar
+
+### 0. Iniciar a API
+
+Este frontend utiliza a API independente do Tutor Virtual. Por padrão, ela deve
+estar disponível em `http://localhost:8000`, com o endpoint de chat em
+`/api/v1/chat` e o health check em `/health`.
+
+As chamadas de chat enviam o Firebase ID Token do usuário no cabeçalho
+`Authorization`. A API precisa estar configurada com Firebase Admin para validar
+esse token.
+
+Para usar outro endereço, defina `VITE_API_URL` no `.env` e reinicie o Vite.
 
 ### 1. Instalar dependencias
 
@@ -68,7 +82,7 @@ Abra http://localhost:5173
 
 ## Proximos passos sugeridos (conforme arquitetura do TCC)
 
-- Conectar a tela de pergunta a um backend real (FastAPI) que chama o LLM (GPT-4o) e retorna as anotacoes/feedback.
+- Conectar a tela de pergunta ao backend FastAPI para avaliar codigo e retornar anotacoes/feedback.
 - Persistir progresso do aluno no Firestore (historico de respostas, nivel de dificuldade adaptativo via IRT).
 - Trocar o `<textarea>` da tela de pergunta pelo Monaco Editor para syntax highlighting real.
 - Adicionar Redis/cache no backend para sessoes de tutoria em tempo real, se necessario.

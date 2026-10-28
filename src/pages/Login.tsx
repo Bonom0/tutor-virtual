@@ -22,7 +22,7 @@ export default function Login() {
       } else {
         await signUpWithEmail(email, password);
       }
-      navigate('/pergunta');
+      navigate('/chat');
     } catch (err) {
       console.error('[Login] erro no login/cadastro por email:', err);
       setError(traduzErro(err));
@@ -36,7 +36,7 @@ export default function Login() {
     setSubmitting(true);
     try {
       await signInWithGoogle();
-      navigate('/pergunta');
+      navigate('/chat');
     } catch (err) {
       console.error('[Login] erro no login com Google:', err);
       setError(traduzErro(err));

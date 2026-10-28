@@ -106,6 +106,12 @@ export default function Question() {
           tutor<span className="text-tutor">.</span>virtual
         </span>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/chat')}
+            className="text-sm font-medium text-tutor hover:text-tutor-dark transition"
+          >
+            Tirar dúvidas
+          </button>
           {user?.email && (
             <span className="text-sm text-graphite-soft hidden sm:inline">{user.email}</span>
           )}
