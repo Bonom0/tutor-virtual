@@ -205,10 +205,18 @@ export default function Question() {
       );
 
       setResult(attempt);
-      setLastSubmittedCode(code);
+      const evaluationWasInconclusive =
+        attempt.evaluation_method === 'static_fallback' && !attempt.progress_updated;
+      if (evaluationWasInconclusive) {
+        pendingAttempt.current = null;
+      } else {
+        setLastSubmittedCode(code);
+      }
       setToast({
         type: attempt.progress_updated && attempt.correct ? 'success' : 'info',
-        message: !attempt.progress_updated
+        message: evaluationWasInconclusive
+          ? 'A avaliação ficou inconclusiva. Seu progresso não foi alterado e você pode reenviar.'
+          : !attempt.progress_updated
           ? 'Essa tentativa já havia sido registrada e não alterou seu progresso.'
           : attempt.correct
           ? 'Resposta correta! Seu progresso foi atualizado.'
@@ -434,21 +442,31 @@ function AttemptResult({ result }: { result: ExerciseAttemptResponse }) {
   const score = Math.round(result.score * 100);
   const confidence = Math.round(result.confidence * 100);
   const levelDifference = result.progress.current_level - result.progress.previous_level;
+  const inconclusive =
+    result.evaluation_method === 'static_fallback' && !result.progress_updated;
 
   return (
     <div
       className={`mt-3 rounded-xl border p-4 ${
-        result.correct ? 'border-progress/40 bg-progress/10' : 'border-marker/30 bg-white'
+        result.correct
+          ? 'border-progress/40 bg-progress/10'
+          : inconclusive
+            ? 'border-amber-300/60 bg-amber-50'
+            : 'border-marker/30 bg-white'
       }`}
       aria-live="polite"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <strong className={result.correct ? 'text-tutor-dark' : 'text-marker'}>
-          {result.correct ? 'Resposta correta' : 'Continue tentando'}
+        <strong className={result.correct ? 'text-tutor-dark' : inconclusive ? 'text-amber-700' : 'text-marker'}>
+          {result.correct
+            ? 'Resposta correta'
+            : inconclusive
+              ? 'Avaliação inconclusiva'
+              : 'Continue tentando'}
         </strong>
         <div className="flex flex-wrap gap-2">
           <span className="rounded-full bg-white px-2.5 py-1 font-mono text-xs text-graphite">
-            Nota: {score}%
+            {inconclusive ? 'Estimativa' : 'Nota'}: {score}%
           </span>
           <span className="rounded-full bg-white px-2.5 py-1 text-xs text-graphite-soft">
             {evaluationMethodLabel(result.evaluation_method)} · confiança {confidence}%
@@ -484,15 +502,23 @@ function AttemptResult({ result }: { result: ExerciseAttemptResponse }) {
           )}
         </div>
       )}
-      <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-gray-200 pt-3 text-xs text-graphite-soft sm:grid-cols-4">
-        <ProgressItem label="Nível anterior" value={result.progress.previous_level.toFixed(3)} />
-        <ProgressItem label="Nível atual" value={result.progress.current_level.toFixed(3)} />
-        <ProgressItem label="Acertos" value={String(result.progress.correct_answers)} />
-        <ProgressItem label="Erros" value={String(result.progress.wrong_answers)} />
-      </dl>
-      <p className="mt-2 font-mono text-xs text-graphite-soft">
-        Evolução nesta tentativa: {levelDifference >= 0 ? '+' : ''}{levelDifference.toFixed(3)}
-      </p>
+      {inconclusive ? (
+        <p className="mt-3 border-t border-amber-200 pt-3 text-xs font-medium text-amber-800">
+          Seu nível, acertos e erros não foram alterados. Você pode reenviar o mesmo código.
+        </p>
+      ) : (
+        <>
+          <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-gray-200 pt-3 text-xs text-graphite-soft sm:grid-cols-4">
+            <ProgressItem label="Nível anterior" value={result.progress.previous_level.toFixed(3)} />
+            <ProgressItem label="Nível atual" value={result.progress.current_level.toFixed(3)} />
+            <ProgressItem label="Acertos" value={String(result.progress.correct_answers)} />
+            <ProgressItem label="Erros" value={String(result.progress.wrong_answers)} />
+          </dl>
+          <p className="mt-2 font-mono text-xs text-graphite-soft">
+            Evolução nesta tentativa: {levelDifference >= 0 ? '+' : ''}{levelDifference.toFixed(3)}
+          </p>
+        </>
+      )}
     </div>
   );
 }
@@ -537,7 +563,7 @@ function evaluationMethodLabel(method: ExerciseEvaluationMethod): string {
   const labels: Record<ExerciseEvaluationMethod, string> = {
     exact_match: 'Verificação direta',
     llm: 'Avaliação pedagógica',
-    static_fallback: 'Avaliação básica',
+    static_fallback: 'Verificação de contingência',
   };
   return labels[method];
 }
