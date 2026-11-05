@@ -1,5 +1,23 @@
 import type { Timestamp } from 'firebase/firestore';
 
+export type NivelProgramacao = 'nenhum' | 'iniciante' | 'intermediario' | 'avancado';
+
+export type ObjetivoAprendizado =
+  | 'aprender_do_zero'
+  | 'acompanhar_estudos'
+  | 'desenvolver_projetos'
+  | 'entrar_no_mercado'
+  | 'resolver_duvidas_trabalho'
+  | 'preparar_entrevistas';
+
+export interface PerfilPedagogico {
+  nivelAutodeclarado: NivelProgramacao;
+  linguagemPreferida: string;
+  linguagensInteresse: string[];
+  areasInteresse: string[];
+  objetivoPrincipal: ObjetivoAprendizado;
+}
+
 /** usuarios/{uid} */
 export interface Usuario {
   nome: string;
@@ -7,6 +25,9 @@ export interface Usuario {
   criadoEm: Timestamp;
   nivelGeral: number; // estimativa geral de habilidade (theta, IRT)
   provedor: 'password' | 'google.com';
+  onboardingConcluido?: boolean;
+  perfilPedagogico?: PerfilPedagogico;
+  perfilAtualizadoEm?: Timestamp;
 }
 
 /** topicos/{id} */
@@ -23,10 +44,11 @@ export interface Questao {
   enunciado: string;
   linguagem: string;
   codigoInicial: string;
-  gabarito: string | null;
+  ativa?: boolean;
+  ordem?: number;
   dificuldade_a: number; // parametro de discriminacao (IRT)
   dificuldade_b: number; // parametro de dificuldade (IRT)
-  dica?: string; // anotacao/feedback mostrado apos "Verificar resposta" (ate termos avaliacao real via LLM)
+  dica?: string;
 }
 
 /** usuarios/{uid}/respostas/{id} */

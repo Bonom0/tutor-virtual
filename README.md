@@ -12,6 +12,7 @@ src/
     Login.tsx       -> tela de login (email, criar conta, Google)
     Chat.tsx        -> chat conectado ao backend FastAPI
     Question.tsx    -> tela de pergunta/exercicio
+    PerfilPedagogico.tsx -> onboarding e edicao do perfil de aprendizagem
   context/
     AuthContext.tsx -> estado de autenticacao global (useAuth())
   components/
@@ -23,7 +24,19 @@ src/
 Rotas:
 - `/` -> Login
 - `/chat` -> chat com o tutor virtual (protegida, exige login)
+- `/chat/:conversationId` -> conversa persistida e restaurada pela API
 - `/pergunta` -> tela de pergunta (protegida, exige login)
+- `/progresso` -> dashboard de progresso e histórico de tentativas
+- `/progresso/:topicId` -> exercícios e evolução detalhada do tópico
+- `/onboarding` -> pesquisa inicial de preferências pedagógicas
+- `/perfil` -> edição do perfil pedagógico
+
+O chat exibe uma barra lateral com as conversas ativas do usuário. No desktop
+ela permanece visível; em telas menores pode ser aberta pelo botão `Histórico`.
+As conversas podem ser pesquisadas pelo título, retomadas, arquivadas sem
+exclusão física e restauradas pela aba `Arquivadas`. A barra lateral e o
+histórico de mensagens usam os cursores opacos retornados pela API para carregar
+mais itens sem reler todo o histórico.
 
 ## Como rodar
 
@@ -36,6 +49,11 @@ estar disponível em `http://localhost:8000`, com o endpoint de chat em
 As chamadas de chat enviam o Firebase ID Token do usuário no cabeçalho
 `Authorization`. A API precisa estar configurada com Firebase Admin para validar
 esse token.
+
+Cada mensagem e tentativa recebe um UUID gerado no cliente. Assim, timeout,
+reenvio ou perda momentânea de conexão não duplicam conversas, mensagens ou
+progresso. Erros de limite, indisponibilidade e timeout exibem mensagens
+específicas e incluem o `request_id` como código de suporte quando disponível.
 
 Para usar outro endereço, defina `VITE_API_URL` no `.env` e reinicie o Vite.
 
@@ -80,9 +98,31 @@ npm run dev
 
 Abra http://localhost:5173
 
-## Proximos passos sugeridos (conforme arquitetura do TCC)
+## Qualidade do frontend
 
-- Conectar a tela de pergunta ao backend FastAPI para avaliar codigo e retornar anotacoes/feedback.
-- Persistir progresso do aluno no Firestore (historico de respostas, nivel de dificuldade adaptativo via IRT).
-- Trocar o `<textarea>` da tela de pergunta pelo Monaco Editor para syntax highlighting real.
-- Adicionar Redis/cache no backend para sessoes de tutoria em tempo real, se necessario.
+O frontend usa carregamento sob demanda por rota, Error Boundary global e CodeMirror 6
+na tela de exercícios. O editor oferece destaque de sintaxe, numeração de linhas,
+restauração do código inicial e envio com `Ctrl + Enter`.
+
+Para executar as validações:
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+O dashboard permite filtrar tentativas por tópico, linguagem e resultado, usando
+paginação por cursor fornecida pela API. O cliente também reconhece `/ready`
+para verificações de prontidão da API.
+
+## Contrato com a API
+
+- `POST /api/v1/chat`: chat persistente e idempotente por `client_message_id`.
+- `GET /api/v1/conversations`: busca por prefixo e paginação por cursor.
+- `GET /api/v1/conversations/{id}/messages`: histórico cronológico paginado.
+- `POST /api/v1/exercises/{id}/attempts`: avaliação idempotente por `client_attempt_id`.
+- `GET /api/v1/progress` e `/api/v1/attempts`: progresso e histórico adaptativo.
+
+Em produção, configure `VITE_API_URL` com HTTPS e restrinja as origens CORS da
+API ao domínio publicado do frontend.

@@ -1,7 +1,26 @@
-import { useState, useRef, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { sendMessage, type CodeExample } from '../services/api';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useAuth } from '../context/auth';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  getConversationMessages,
+  listConversations,
+  archiveConversation as archiveConversationApi,
+  updateConversation,
+  sendMessage,
+  apiErrorMessage,
+  type CodeExample,
+  type ConversationMessage,
+  type ConversationSummary,
+} from '../services/api';
+import { createClientId } from '../utils/id';
+import ConversationSidebar from '../components/ConversationSidebar';
+import ConfirmDialog from '../components/ConfirmDialog';
+import RenameConversationDialog from '../components/RenameConversationDialog';
+import Toast, { type ToastMessage } from '../components/Toast';
+
+type PendingConfirmation =
+  | { type: 'new-conversation' }
+  | { type: 'archive-conversation'; conversation: ConversationSummary };
 
 // Tipos para o sistema de chat
 export interface Message {
@@ -18,13 +37,67 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+  const [conversationCursor, setConversationCursor] = useState<string | null>(null);
+  const [messageCursor, setMessageCursor] = useState<string | null>(null);
+  const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
+  const [conversationListError, setConversationListError] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [conversationStatus, setConversationStatus] = useState<'active' | 'archived'>('active');
+  const [conversationSearch, setConversationSearch] = useState('');
+  const [debouncedConversationSearch, setDebouncedConversationSearch] = useState('');
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [renamingConversation, setRenamingConversation] = useState<ConversationSummary | null>(null);
+  const [conversationTitle, setConversationTitle] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { conversationId: routeConversationId } = useParams<{ conversationId?: string }>();
+  const conversationId = routeConversationId ?? null;
+
+  const loadConversations = useCallback(async (cursor?: string) => {
+    if (!user) return;
+    setIsLoadingConversations(true);
+    setConversationListError(null);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await listConversations(idToken, {
+        status: conversationStatus,
+        search: debouncedConversationSearch,
+        limit: 30,
+        cursor,
+      });
+      setConversations((current) => cursor ? mergeById(current, response.items) : response.items);
+      setConversationCursor(response.next_cursor);
+    } catch (error) {
+      console.error('[Chat] Erro ao listar conversas:', error);
+      setConversationListError(
+        apiErrorMessage(error, 'Não foi possível carregar o histórico.'),
+      );
+    } finally {
+      setIsLoadingConversations(false);
+    }
+  }, [conversationStatus, debouncedConversationSearch, user]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(
+      () => setDebouncedConversationSearch(conversationSearch),
+      300,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [conversationSearch]);
+
+  useEffect(() => {
+    void loadConversations();
+  }, [loadConversations]);
 
   // Auto-scroll para a última mensagem
   useEffect(() => {
@@ -35,6 +108,72 @@ export default function Chat() {
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Restaura a conversa persistida sempre que o ID presente na URL mudar.
+  useEffect(() => {
+    let active = true;
+
+    if (!conversationId) {
+      setMessages([]);
+      setMessageCursor(null);
+      setError(null);
+      setIsLoadingHistory(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    if (!user) return;
+    const currentUser = user;
+    const currentConversationId = conversationId;
+
+    setIsLoadingHistory(true);
+    setError(null);
+    getConversationMessagesForUser();
+
+    async function getConversationMessagesForUser() {
+      try {
+        const idToken = await currentUser.getIdToken();
+        const response = await getConversationMessages(currentConversationId, idToken);
+        if (active) {
+          setMessages(response.messages.map(toUiMessage));
+          setMessageCursor(response.next_cursor);
+        }
+      } catch (error) {
+        console.error('[Chat] Erro ao carregar conversa:', error);
+        if (active) {
+          setMessages([]);
+          setError(
+            apiErrorMessage(error, 'Não foi possível carregar o histórico da conversa.'),
+          );
+        }
+      } finally {
+        if (active) setIsLoadingHistory(false);
+      }
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [conversationId, user]);
+
+  const loadOlderMessages = async () => {
+    if (!user || !conversationId || !messageCursor || isLoadingOlderMessages) return;
+    setIsLoadingOlderMessages(true);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await getConversationMessages(conversationId, idToken, {
+        limit: 50,
+        cursor: messageCursor,
+      });
+      setMessages((current) => mergeById(response.messages.map(toUiMessage), current));
+      setMessageCursor(response.next_cursor);
+    } catch (loadError) {
+      setError(apiErrorMessage(loadError, 'Não foi possível carregar mensagens anteriores.'));
+    } finally {
+      setIsLoadingOlderMessages(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -47,7 +186,7 @@ export default function Chat() {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
-      id: crypto.randomUUID(),
+      id: createClientId(),
       role: 'user',
       content: input.trim(),
       timestamp: new Date(),
@@ -73,18 +212,23 @@ export default function Chat() {
           message: messageContent,
           conversation_id: conversationId || undefined,
           user_context: {},
+          client_message_id: userMessage.id,
         },
         idToken,
       );
 
       // Atualizar conversation_id
-      if (response.conversation_id && response.conversation_id !== 'new') {
-        setConversationId(response.conversation_id);
+      if (
+        response.conversation_id &&
+        response.conversation_id !== 'new' &&
+        response.conversation_id !== conversationId
+      ) {
+        navigate(`/chat/${encodeURIComponent(response.conversation_id)}`, { replace: true });
       }
 
       // Criar mensagem do tutor
       const tutorMessage: Message = {
-        id: crypto.randomUUID(),
+        id: createClientId(),
         role: 'tutor',
         content: response.response,
         examples: response.examples,
@@ -94,12 +238,11 @@ export default function Chat() {
       };
 
       setMessages((prev) => [...prev, tutorMessage]);
+      void loadConversations();
     } catch (error) {
       console.error('[Chat] Erro ao enviar mensagem:', error);
       setError(
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível obter a resposta do tutor.',
+        apiErrorMessage(error, 'Não foi possível obter a resposta do tutor.'),
       );
     } finally {
       setIsLoading(false);
@@ -114,15 +257,117 @@ export default function Chat() {
   };
 
   const startNewConversation = () => {
-    if (messages.length === 0) return;
+    if (
+      !conversationId &&
+      messages.length === 0 &&
+      conversationStatus === 'active' &&
+      !conversationSearch
+    ) return;
 
-    // Confirmar antes de limpar
-    if (confirm('Tem certeza que deseja iniciar uma nova conversa? O histórico atual será perdido.')) {
-      setMessages([]);
-      setConversationId(null);
-      setError(null);
-      inputRef.current?.focus();
+    if (messages.length > 0) {
+      setPendingConfirmation({ type: 'new-conversation' });
+      return;
     }
+    resetToNewConversation();
+  };
+
+  const resetToNewConversation = () => {
+    setMessages([]);
+    setError(null);
+    navigate('/chat');
+    setConversationStatus('active');
+    setConversationSearch('');
+    setIsSidebarOpen(false);
+    inputRef.current?.focus();
+  };
+
+  const selectConversation = (id: string) => {
+    navigate(`/chat/${encodeURIComponent(id)}`);
+    setIsSidebarOpen(false);
+  };
+
+  const requestArchiveConversation = (conversation: ConversationSummary) => {
+    setPendingConfirmation({ type: 'archive-conversation', conversation });
+  };
+
+  const requestRenameConversation = (conversation: ConversationSummary) => {
+    setRenamingConversation(conversation);
+    setConversationTitle(conversation.title);
+  };
+
+  const renameConversation = async () => {
+    const title = conversationTitle.trim();
+    if (!user || !renamingConversation || !title || isRenaming) return;
+
+    setIsRenaming(true);
+    try {
+      const idToken = await user.getIdToken();
+      const updated = await updateConversation(renamingConversation.id, { title }, idToken);
+      setConversations((items) =>
+        items.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setRenamingConversation(null);
+      setConversationTitle('');
+      setToast({ type: 'success', message: 'Conversa renomeada com sucesso.' });
+    } catch (error) {
+      console.error('[Chat] Erro ao renomear conversa:', error);
+      setToast({
+        type: 'error',
+        message: apiErrorMessage(error, 'Não foi possível renomear a conversa.'),
+      });
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
+  const archiveConversation = async (conversation: ConversationSummary) => {
+    if (!user) return;
+    try {
+      const idToken = await user.getIdToken();
+      await archiveConversationApi(conversation.id, idToken);
+      setConversations((items) => items.filter((item) => item.id !== conversation.id));
+      if (conversation.id === conversationId) {
+        setMessages([]);
+        navigate('/chat');
+      }
+      setToast({ type: 'success', message: 'Conversa arquivada com sucesso.' });
+    } catch (error) {
+      console.error('[Chat] Erro ao arquivar conversa:', error);
+      setConversationListError(
+        apiErrorMessage(error, 'Não foi possível arquivar a conversa.'),
+      );
+      setToast({ type: 'error', message: 'Não foi possível arquivar a conversa.' });
+    }
+  };
+
+  const restoreConversation = async (conversation: ConversationSummary) => {
+    if (!user) return;
+    try {
+      const idToken = await user.getIdToken();
+      await updateConversation(conversation.id, { status: 'active' }, idToken);
+      setConversations((items) => items.filter((item) => item.id !== conversation.id));
+      setToast({ type: 'success', message: 'Conversa restaurada para a lista de ativas.' });
+    } catch (error) {
+      console.error('[Chat] Erro ao restaurar conversa:', error);
+      setConversationListError(
+        apiErrorMessage(error, 'Não foi possível restaurar a conversa.'),
+      );
+      setToast({ type: 'error', message: 'Não foi possível restaurar a conversa.' });
+    }
+  };
+
+  const confirmPendingAction = async () => {
+    if (!pendingConfirmation) return;
+    if (pendingConfirmation.type === 'new-conversation') {
+      resetToNewConversation();
+      setPendingConfirmation(null);
+      return;
+    }
+
+    setIsConfirming(true);
+    await archiveConversation(pendingConfirmation.conversation);
+    setIsConfirming(false);
+    setPendingConfirmation(null);
   };
 
   return (
@@ -135,16 +380,35 @@ export default function Chat() {
           </span>
           <button
             onClick={startNewConversation}
-            className="text-sm font-medium text-tutor hover:text-tutor-dark transition"
+            className="text-sm font-medium text-tutor hover:text-tutor-dark transition lg:hidden"
             disabled={messages.length === 0}
           >
             + Nova conversa
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            className="text-sm font-medium text-graphite-soft hover:text-graphite lg:hidden"
+          >
+            Histórico
           </button>
           <button
             onClick={() => navigate('/pergunta')}
             className="text-sm font-medium text-graphite-soft hover:text-graphite transition"
           >
             Exercícios
+          </button>
+          <button
+            onClick={() => navigate('/progresso')}
+            className="text-sm font-medium text-graphite-soft hover:text-graphite transition"
+          >
+            Meu progresso
+          </button>
+          <button
+            onClick={() => navigate('/perfil')}
+            className="text-sm font-medium text-graphite-soft hover:text-graphite transition"
+          >
+            Meu perfil
           </button>
         </div>
         <div className="flex items-center gap-4">
@@ -160,11 +424,40 @@ export default function Chat() {
         </div>
       </header>
 
+      <div className="flex min-h-0 flex-1">
+        <ConversationSidebar
+          conversations={conversations}
+          activeConversationId={conversationId}
+          isLoading={isLoadingConversations}
+          error={conversationListError}
+          isOpen={isSidebarOpen}
+          statusFilter={conversationStatus}
+          search={conversationSearch}
+          onClose={() => setIsSidebarOpen(false)}
+          onStatusFilterChange={setConversationStatus}
+          onSearchChange={setConversationSearch}
+          onNewConversation={startNewConversation}
+          onSelectConversation={selectConversation}
+          onRenameConversation={requestRenameConversation}
+          onArchiveConversation={requestArchiveConversation}
+          onRestoreConversation={restoreConversation}
+          hasMore={Boolean(conversationCursor)}
+          onLoadMore={() => void loadConversations(conversationCursor ?? undefined)}
+        />
+
       {/* Área principal de chat */}
-      <main className="flex-1 flex flex-col max-w-4xl mx-auto w-full">
+      <main className="flex min-w-0 flex-1 flex-col">
         {/* Mensagens */}
         <div className="flex-1 overflow-y-auto px-6 py-8 space-y-6">
-          {messages.length === 0 && (
+          {isLoadingHistory && (
+            <div className="py-12 text-center">
+              <span className="font-mono text-sm text-graphite-soft">
+                carregando conversa...
+              </span>
+            </div>
+          )}
+
+          {!isLoadingHistory && messages.length === 0 && (
             <div className="text-center py-12">
               <div className="max-w-md mx-auto">
                 <div className="w-16 h-16 bg-tutor/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -206,6 +499,19 @@ export default function Chat() {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {!isLoadingHistory && messageCursor && (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => void loadOlderMessages()}
+                disabled={isLoadingOlderMessages}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-tutor hover:border-tutor disabled:opacity-50"
+              >
+                {isLoadingOlderMessages ? 'Carregando...' : 'Carregar mensagens anteriores'}
+              </button>
             </div>
           )}
 
@@ -268,7 +574,7 @@ export default function Chat() {
                   placeholder="Digite sua dúvida sobre programação..."
                   rows={1}
                   className="w-full resize-none rounded-xl border border-gray-300 px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-tutor focus:border-tutor transition min-h-[48px] max-h-32"
-                  disabled={isLoading}
+                  disabled={isLoading || isLoadingHistory}
                   style={{ fieldSizing: 'content' }}
                 />
                 {input && (
@@ -279,7 +585,7 @@ export default function Chat() {
               </div>
               <button
                 type="submit"
-                disabled={!input.trim() || isLoading}
+                disabled={!input.trim() || isLoading || isLoadingHistory}
                 className="bg-tutor hover:bg-tutor-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-xl px-5 py-3 transition flex items-center gap-2"
               >
                 {isLoading ? (
@@ -323,8 +629,61 @@ export default function Chat() {
           </form>
         </div>
       </main>
+      </div>
+
+      <ConfirmDialog
+        open={pendingConfirmation !== null}
+        title={
+          pendingConfirmation?.type === 'archive-conversation'
+            ? 'Arquivar conversa?'
+            : 'Iniciar nova conversa?'
+        }
+        description={
+          pendingConfirmation?.type === 'archive-conversation'
+            ? `“${pendingConfirmation.conversation.title || 'Nova conversa'}” será movida para a aba Arquivadas e poderá ser restaurada depois.`
+            : 'A conversa atual continuará salva no histórico e poderá ser retomada quando quiser.'
+        }
+        confirmLabel={
+          pendingConfirmation?.type === 'archive-conversation' ? 'Arquivar' : 'Nova conversa'
+        }
+        tone={pendingConfirmation?.type === 'archive-conversation' ? 'danger' : 'primary'}
+        loading={isConfirming}
+        onCancel={() => {
+          if (!isConfirming) setPendingConfirmation(null);
+        }}
+        onConfirm={() => void confirmPendingAction()}
+      />
+
+      <Toast toast={toast} onClose={() => setToast(null)} />
+
+      <RenameConversationDialog
+        open={renamingConversation !== null}
+        value={conversationTitle}
+        loading={isRenaming}
+        onChange={setConversationTitle}
+        onCancel={() => {
+          if (!isRenaming) {
+            setRenamingConversation(null);
+            setConversationTitle('');
+          }
+        }}
+        onConfirm={() => void renameConversation()}
+      />
     </div>
   );
+}
+
+function toUiMessage(message: ConversationMessage): Message {
+  const parsedTimestamp = message.created_at ? new Date(message.created_at) : new Date();
+  return {
+    id: message.id,
+    role: message.role === 'assistant' ? 'tutor' : 'user',
+    content: message.content,
+    examples: message.examples,
+    timestamp: Number.isNaN(parsedTimestamp.getTime()) ? new Date() : parsedTimestamp,
+    isModerated: message.moderated,
+    warning: message.warning ?? undefined,
+  };
 }
 
 // Componente para renderizar cada mensagem
@@ -433,4 +792,13 @@ function CodeBlock({ example }: { example: CodeExample }) {
       )}
     </div>
   );
+}
+
+function mergeById<T extends { id: string }>(first: T[], second: T[]): T[] {
+  const seen = new Set<string>();
+  return [...first, ...second].filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
 }

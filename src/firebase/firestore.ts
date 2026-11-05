@@ -13,7 +13,14 @@ import {
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from './config';
-import type { Usuario, Topico, Questao, Resposta, Progresso } from '../types/firestore';
+import type {
+  Usuario,
+  Topico,
+  Questao,
+  Resposta,
+  Progresso,
+  PerfilPedagogico,
+} from '../types/firestore';
 
 // Converter generico: grava/le o objeto como esta, sem transformacao.
 // Mantem os tipos fortes ao ler/escrever no Firestore.
@@ -49,6 +56,7 @@ export async function criarUsuarioSeNaoExistir(
       email: dados.email,
       provedor: dados.provedor,
       nivelGeral: 0,
+      onboardingConcluido: false,
       criadoEm: serverTimestamp(),
     } as Usuario);
   }
@@ -58,6 +66,20 @@ export async function criarUsuarioSeNaoExistir(
 export async function getUsuario(uid: string) {
   const snap = await getDoc(doc(usuariosCol, uid));
   return snap.exists() ? snap.data() : null;
+}
+
+/** Salva ou atualiza as preferências usadas para personalizar o tutor. */
+export async function salvarPerfilPedagogico(uid: string, perfil: PerfilPedagogico) {
+  const ref = doc(db, 'usuarios', uid);
+  await setDoc(
+    ref,
+    {
+      onboardingConcluido: true,
+      perfilPedagogico: perfil,
+      perfilAtualizadoEm: serverTimestamp(),
+    },
+    { merge: true },
+  );
 }
 
 export async function listarTopicos() {
