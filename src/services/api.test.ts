@@ -29,15 +29,17 @@ describe('cliente da API', () => {
           unlocked_question_ids: ['q1'],
           completed_question_ids: [],
           recommended_question_id: 'q1',
+          selected_language: 'typescript',
+          available_languages: ['python', 'typescript'],
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       ),
     );
 
-    const response = await getExerciseNavigation('token-teste');
+    const response = await getExerciseNavigation('token-teste', 'typescript');
     expect(response.current_question_id).toBe('q1');
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/api/v1/exercises/navigation'),
+      expect.stringContaining('/api/v1/exercises/navigation?language=typescript'),
       expect.objectContaining({
         headers: expect.objectContaining({ Authorization: 'Bearer token-teste' }),
       }),

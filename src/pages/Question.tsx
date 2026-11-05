@@ -13,12 +13,14 @@ import {
   ApiError,
   getExercise,
   getExerciseNavigation,
+  getProfile,
   submitExerciseAttempt,
   apiErrorMessage,
   type Exercise,
   type ExerciseAttemptResponse,
   type ExerciseAnnotationSeverity,
   type ExerciseEvaluationMethod,
+  type ProfileLanguage,
 } from '../services/api';
 
 export default function Question() {
@@ -33,6 +35,11 @@ export default function Question() {
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [questionHistory, setQuestionHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [languageFilter, setLanguageFilter] = useState<ProfileLanguage | undefined>(
+    initialLanguageFilter,
+  );
+  const [selectedLanguage, setSelectedLanguage] = useState<ProfileLanguage | null>(null);
+  const [availableLanguages, setAvailableLanguages] = useState<ProfileLanguage[]>([]);
   const startedAt = useRef(Date.now());
   const pendingAttempt = useRef<{ key: string; id: string } | null>(null);
 
@@ -84,8 +91,25 @@ export default function Question() {
       setLoadError(null);
       try {
         const idToken = await currentUser.getIdToken();
-        const navigation = await getExerciseNavigation(idToken);
+        let requestedLanguage = languageFilter;
+        let preferenceFromProfile = false;
+        if (!requestedLanguage) {
+          const profile = await getProfile(idToken);
+          requestedLanguage = profile.profile?.preferred_language;
+          preferenceFromProfile = Boolean(requestedLanguage);
+        }
+        let navigation;
+        try {
+          navigation = await getExerciseNavigation(idToken, requestedLanguage);
+        } catch (error) {
+          if (!(preferenceFromProfile && error instanceof ApiError && error.status === 404)) {
+            throw error;
+          }
+          navigation = await getExerciseNavigation(idToken);
+        }
         if (!active) return;
+        setSelectedLanguage(navigation.selected_language);
+        setAvailableLanguages(navigation.available_languages);
         const baseHistory = Array.from(
           new Set([...navigation.previous_question_ids, navigation.current_question_id]),
         );
@@ -104,6 +128,7 @@ export default function Question() {
         setHistoryIndex(history.indexOf(selectedId));
         const url = new URL(window.location.href);
         url.searchParams.set('questionId', selectedId);
+        url.searchParams.set('language', navigation.selected_language);
         window.history.replaceState({}, '', `${url.pathname}${url.search}`);
         await loadExercise(selectedId);
       } catch (error) {
@@ -120,7 +145,7 @@ export default function Question() {
     return () => {
       active = false;
     };
-  }, [loadExercise, user]);
+  }, [languageFilter, loadExercise, user]);
 
   const navigateInHistory = async (nextIndex: number) => {
     const questionId = questionHistory[nextIndex];
@@ -300,6 +325,25 @@ export default function Question() {
             <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-tutor/10 px-2.5 py-1 text-xs font-medium text-tutor">
               Exercício adaptativo
             </span>
+            {selectedLanguage && availableLanguages.length > 0 && (
+              <label className="flex items-center gap-2 text-sm text-graphite-soft">
+                Linguagem
+                <select
+                  value={selectedLanguage}
+                  onChange={(event) => {
+                    setLanguageFilter(event.target.value as ProfileLanguage);
+                  }}
+                  disabled={checking}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-graphite focus:border-tutor focus:outline-none focus:ring-2 focus:ring-tutor/30 disabled:opacity-60"
+                >
+                  {availableLanguages.map((language) => (
+                    <option key={language} value={language}>
+                      {languageLabel(language)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             {historyIndex > 0 && (
               <button
                 type="button"
@@ -579,4 +623,36 @@ function normalizeStarterCode(code: string): string {
 
 function comparableCode(code: string): string {
   return code.replace(/\r\n/g, '\n').replace(/\s+/g, '');
+}
+
+const PROFILE_LANGUAGES: ProfileLanguage[] = [
+  'javascript',
+  'typescript',
+  'python',
+  'java',
+  'c',
+  'cpp',
+  'csharp',
+  'go',
+];
+
+function initialLanguageFilter(): ProfileLanguage | undefined {
+  const language = new URLSearchParams(window.location.search).get('language');
+  return PROFILE_LANGUAGES.includes(language as ProfileLanguage)
+    ? language as ProfileLanguage
+    : undefined;
+}
+
+function languageLabel(language: ProfileLanguage): string {
+  const labels: Record<ProfileLanguage, string> = {
+    javascript: 'JavaScript',
+    typescript: 'TypeScript',
+    python: 'Python',
+    java: 'Java',
+    c: 'C',
+    cpp: 'C++',
+    csharp: 'C#',
+    go: 'Go',
+  };
+  return labels[language];
 }

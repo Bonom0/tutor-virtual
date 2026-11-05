@@ -164,6 +164,8 @@ export interface ExerciseNavigation {
   unlocked_question_ids: string[];
   completed_question_ids: string[];
   recommended_question_id: string;
+  selected_language: ProfileLanguage;
+  available_languages: ProfileLanguage[];
 }
 
 export type ExerciseProgressStatus = 'locked' | 'unlocked' | 'in_progress' | 'completed';
@@ -386,8 +388,14 @@ export async function submitExerciseAttempt(
   );
 }
 
-export async function getExerciseNavigation(idToken: string): Promise<ExerciseNavigation> {
-  return requestApi<ExerciseNavigation>('/api/v1/exercises/navigation', idToken);
+export async function getExerciseNavigation(
+  idToken: string,
+  language?: ProfileLanguage,
+): Promise<ExerciseNavigation> {
+  const params = new URLSearchParams();
+  if (language) params.set('language', language);
+  const query = params.size ? `?${params.toString()}` : '';
+  return requestApi<ExerciseNavigation>(`/api/v1/exercises/navigation${query}`, idToken);
 }
 
 export async function getGeneralProgress(idToken: string): Promise<GeneralProgress> {
