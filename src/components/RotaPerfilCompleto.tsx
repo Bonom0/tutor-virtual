@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/auth';
-import { getUsuario } from '../firebase/firestore';
+import { initializeProfile } from '../services/api';
 
 export default function RotaPerfilCompleto({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -16,10 +16,11 @@ export default function RotaPerfilCompleto({ children }: { children: ReactNode }
       if (!user) return;
       setStatus('carregando');
       try {
-        const usuario = await getUsuario(user.uid);
+        const idToken = await user.getIdToken();
+        const usuario = await initializeProfile(idToken);
         if (ativo) {
           setStatus(
-            usuario?.onboardingConcluido && usuario.perfilPedagogico
+            usuario.onboarding_completed && usuario.profile
               ? 'completo'
               : 'incompleto',
           );

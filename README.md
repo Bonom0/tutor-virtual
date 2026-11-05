@@ -2,7 +2,7 @@
 
 Projeto de TCC: Tutor Virtual com LLM para ensino de programacao.
 
-Stack atual: **React + TypeScript + Vite + Tailwind CSS v4 + Firebase (Auth + Firestore)**.
+Stack atual: **React + TypeScript + Vite + Tailwind CSS v4 + Firebase Auth + API FastAPI**.
 
 ## Estrutura
 
@@ -18,7 +18,7 @@ src/
   components/
     RotaProtegida.tsx -> redireciona para "/" se nao estiver logado
   firebase/
-    config.ts       -> inicializacao do Firebase (Auth + Firestore)
+    config.ts       -> inicializacao do Firebase Auth
 ```
 
 Rotas:
@@ -65,7 +65,9 @@ npm install
 
 ### 2. Estrutura do banco (Firestore)
 
-Colecoes usadas pelo projeto (ver `src/types/firestore.ts` para os tipos e `src/firebase/firestore.ts` para as funcoes de acesso):
+O frontend usa o Firebase diretamente somente para autenticacao. Perfil,
+conversas, exercicios, tentativas e progresso sao acessados pela API autenticada.
+As principais colecoes administradas pela API sao:
 
 - `usuarios/{uid}` - perfil e nivel geral (theta IRT). Criado automaticamente no cadastro/login.
   - `usuarios/{uid}/respostas/{id}` - historico de tentativas do usuario
@@ -73,7 +75,10 @@ Colecoes usadas pelo projeto (ver `src/types/firestore.ts` para os tipos e `src/
 - `topicos/{id}` - conteudo publico (ex: "Loops", "Recursao")
 - `questoes/{id}` - exercicios, com parametros IRT (`dificuldade_a`, `dificuldade_b`)
 
-As regras de seguranca ja estao em `firestore.rules` (publique com `firebase deploy --only firestore:rules` depois de instalar a Firebase CLI). Voce ainda precisa popular manualmente `topicos` e `questoes` no console do Firebase (ou via um script/backend) - o app so cria os dados de `usuarios`, `respostas` e `progresso` automaticamente.
+O arquivo `firestore.rules` e uma copia das regras canonicas mantidas em
+`tutor-virtual-api/firestore.rules`. Publique as regras e os indices pela pasta da
+API. O catalogo inicial pode ser carregado pelo script `scripts/seed_firestore.py`
+da API.
 
 ### 3. Criar um projeto no Firebase
 
@@ -119,6 +124,8 @@ para verificações de prontidão da API.
 ## Contrato com a API
 
 - `POST /api/v1/chat`: chat persistente e idempotente por `client_message_id`.
+- `POST /api/v1/profile/initialize`, `GET /api/v1/profile` e `PUT /api/v1/profile`:
+  inicializacao, leitura e edicao do perfil pedagógico.
 - `GET /api/v1/conversations`: busca por prefixo e paginação por cursor.
 - `GET /api/v1/conversations/{id}/messages`: histórico cronológico paginado.
 - `POST /api/v1/exercises/{id}/attempts`: avaliação idempotente por `client_attempt_id`.

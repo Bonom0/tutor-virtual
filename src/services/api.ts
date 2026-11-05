@@ -32,6 +32,34 @@ export interface ChatResponse {
   warning?: string;
 }
 
+export type ProfileLanguage =
+  | 'javascript'
+  | 'typescript'
+  | 'python'
+  | 'java'
+  | 'c'
+  | 'cpp'
+  | 'csharp'
+  | 'go';
+
+export interface PedagogicalProfile {
+  level: string;
+  preferred_language: ProfileLanguage;
+  programming_languages: ProfileLanguage[];
+  interests: string[];
+  learning_goal: string | null;
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string | null;
+  name: string | null;
+  onboarding_completed: boolean;
+  profile: PedagogicalProfile | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export interface ConversationSummary {
   id: string;
   title: string;
@@ -258,6 +286,27 @@ export async function sendMessage(
   }
 
   return data;
+}
+
+/** Inicializa o documento do usuário na API de forma idempotente. */
+export async function initializeProfile(idToken: string): Promise<UserProfile> {
+  return requestApi<UserProfile>('/api/v1/profile/initialize', idToken, {
+    method: 'POST',
+  });
+}
+
+export async function getProfile(idToken: string): Promise<UserProfile> {
+  return requestApi<UserProfile>('/api/v1/profile', idToken);
+}
+
+export async function updateProfile(
+  profile: PedagogicalProfile,
+  idToken: string,
+): Promise<UserProfile> {
+  return requestApi<UserProfile>('/api/v1/profile', idToken, {
+    method: 'PUT',
+    body: JSON.stringify({ profile, onboarding_completed: true }),
+  });
 }
 
 export async function listConversations(

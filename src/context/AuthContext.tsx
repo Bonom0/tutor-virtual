@@ -8,8 +8,12 @@ import {
   type User,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase/config';
-import { criarUsuarioSeNaoExistir } from '../firebase/firestore';
+import { initializeProfile } from '../services/api';
 import { AuthContext } from './auth';
+
+async function initializeApiProfile(user: User) {
+  await initializeProfile(await user.getIdToken());
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -25,29 +29,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUpWithEmail = async (email: string, password: string) => {
     const credential = await createUserWithEmailAndPassword(auth, email, password);
-    await criarUsuarioSeNaoExistir(credential.user.uid, {
-      nome: email.split('@')[0],
-      email,
-      provedor: 'password',
-    });
+    await initializeApiProfile(credential.user);
   };
 
   const signInWithEmail = async (email: string, password: string) => {
     const credential = await signInWithEmailAndPassword(auth, email, password);
-    await criarUsuarioSeNaoExistir(credential.user.uid, {
-      nome: credential.user.displayName ?? email.split('@')[0],
-      email,
-      provedor: 'password',
-    });
+    await initializeApiProfile(credential.user);
   };
 
   const signInWithGoogle = async () => {
     const credential = await signInWithPopup(auth, googleProvider);
-    await criarUsuarioSeNaoExistir(credential.user.uid, {
-      nome: credential.user.displayName ?? credential.user.email?.split('@')[0] ?? 'usuario',
-      email: credential.user.email ?? '',
-      provedor: 'google.com',
-    });
+    await initializeApiProfile(credential.user);
   };
 
   const logout = async () => {

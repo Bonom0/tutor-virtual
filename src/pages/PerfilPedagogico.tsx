@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/auth';
-import { getUsuario, salvarPerfilPedagogico } from '../firebase/firestore';
+import {
+  initializeProfile,
+  updateProfile,
+  type PedagogicalProfile,
+  type ProfileLanguage,
+} from '../services/api';
 import type {
   NivelProgramacao,
   ObjetivoAprendizado,
   PerfilPedagogico as PerfilPedagogicoData,
-} from '../types/firestore';
+} from '../types/profile';
 
 interface Option<T extends string = string> {
   value: T;
@@ -21,17 +26,15 @@ const NIVEIS: Option<NivelProgramacao>[] = [
   { value: 'avancado', label: 'Avançado', description: 'Tenho experiência prática e quero aprofundar.' },
 ];
 
-const LINGUAGENS: Option[] = [
-  { value: 'javascript', label: 'JavaScript / TypeScript' },
+const LINGUAGENS: Option<ProfileLanguage>[] = [
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'typescript', label: 'TypeScript' },
   { value: 'python', label: 'Python' },
   { value: 'java', label: 'Java' },
+  { value: 'c', label: 'C' },
+  { value: 'cpp', label: 'C++' },
   { value: 'csharp', label: 'C#' },
-  { value: 'cpp', label: 'C / C++' },
-  { value: 'php', label: 'PHP' },
   { value: 'go', label: 'Go' },
-  { value: 'kotlin', label: 'Kotlin' },
-  { value: 'swift', label: 'Swift' },
-  { value: 'nao_sei', label: 'Ainda não sei' },
 ];
 
 const AREAS: Option[] = [
@@ -76,13 +79,14 @@ export default function PerfilPedagogico({ modo }: { modo: 'onboarding' | 'edica
 
   useEffect(() => {
     if (!user) return;
-    getUsuario(user.uid)
+    user.getIdToken()
+      .then((idToken) => initializeProfile(idToken))
       .then((usuario) => {
-        if (modo === 'onboarding' && usuario?.onboardingConcluido) {
+        if (modo === 'onboarding' && usuario.onboarding_completed) {
           navigate('/chat', { replace: true });
           return;
         }
-        if (usuario?.perfilPedagogico) setPerfil(usuario.perfilPedagogico);
+        if (usuario.profile) setPerfil(toLocalProfile(usuario.profile));
       })
       .catch((error) => {
         console.error('[PerfilPedagogico] erro ao carregar perfil:', error);
@@ -124,7 +128,8 @@ export default function PerfilPedagogico({ modo }: { modo: 'onboarding' | 'edica
     setSalvando(true);
     setErro(null);
     try {
-      await salvarPerfilPedagogico(user.uid, perfil);
+      const idToken = await user.getIdToken();
+      await updateProfile(toApiProfile(perfil), idToken);
       navigate('/chat', { replace: true });
     } catch (error) {
       console.error('[PerfilPedagogico] erro ao salvar perfil:', error);
@@ -301,6 +306,26 @@ export default function PerfilPedagogico({ modo }: { modo: 'onboarding' | 'edica
       </main>
     </div>
   );
+}
+
+function toApiProfile(perfil: PerfilPedagogicoData): PedagogicalProfile {
+  return {
+    level: perfil.nivelAutodeclarado,
+    preferred_language: perfil.linguagemPreferida as ProfileLanguage,
+    programming_languages: perfil.linguagensInteresse as ProfileLanguage[],
+    interests: perfil.areasInteresse,
+    learning_goal: perfil.objetivoPrincipal,
+  };
+}
+
+function toLocalProfile(perfil: PedagogicalProfile): PerfilPedagogicoData {
+  return {
+    nivelAutodeclarado: perfil.level as NivelProgramacao,
+    linguagemPreferida: perfil.preferred_language,
+    linguagensInteresse: perfil.programming_languages,
+    areasInteresse: perfil.interests,
+    objetivoPrincipal: (perfil.learning_goal ?? 'acompanhar_estudos') as ObjetivoAprendizado,
+  };
 }
 
 function Step({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {

@@ -4,10 +4,12 @@ import {
   apiErrorMessage,
   getConversationMessages,
   getExerciseNavigation,
+  initializeProfile,
   listAttempts,
   listConversations,
   sendMessage,
   submitExerciseAttempt,
+  updateProfile,
 } from './api';
 
 const fetchMock = vi.fn();
@@ -40,6 +42,45 @@ describe('cliente da API', () => {
         headers: expect.objectContaining({ Authorization: 'Bearer token-teste' }),
       }),
     );
+  });
+
+  it('inicializa e atualiza o perfil somente pela API autenticada', async () => {
+    const userProfile = {
+      uid: 'user-1',
+      email: 'aluno@example.com',
+      name: 'Aluno',
+      onboarding_completed: false,
+      profile: null,
+      created_at: null,
+      updated_at: null,
+    };
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify(userProfile), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        ...userProfile,
+        onboarding_completed: true,
+      }), { status: 200 }));
+
+    await initializeProfile('token-perfil');
+    await updateProfile({
+      level: 'iniciante',
+      preferred_language: 'python',
+      programming_languages: ['python'],
+      interests: ['fundamentos'],
+      learning_goal: 'aprender_do_zero',
+    }, 'token-perfil');
+
+    expect(fetchMock.mock.calls[0][0]).toContain('/api/v1/profile/initialize');
+    expect(fetchMock.mock.calls[0][1]).toEqual(expect.objectContaining({ method: 'POST' }));
+    const updateRequest = fetchMock.mock.calls[1][1] as RequestInit;
+    expect(updateRequest).toEqual(expect.objectContaining({
+      method: 'PUT',
+      headers: expect.objectContaining({ Authorization: 'Bearer token-perfil' }),
+    }));
+    expect(JSON.parse(String(updateRequest.body))).toEqual(expect.objectContaining({
+      onboarding_completed: true,
+      profile: expect.objectContaining({ preferred_language: 'python' }),
+    }));
   });
 
   it('monta filtros e cursor do histórico', async () => {
