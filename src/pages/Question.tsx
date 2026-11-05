@@ -91,13 +91,12 @@ export default function Question() {
       setLoadError(null);
       try {
         const idToken = await currentUser.getIdToken();
-        let requestedLanguage = languageFilter;
-        let preferenceFromProfile = false;
-        if (!requestedLanguage) {
-          const profile = await getProfile(idToken);
-          requestedLanguage = profile.profile?.preferred_language;
-          preferenceFromProfile = Boolean(requestedLanguage);
-        }
+        const profile = await getProfile(idToken);
+        const profileLanguages = profile.profile?.programming_languages ?? [];
+        const requestedLanguage = languageFilter && profileLanguages.includes(languageFilter)
+          ? languageFilter
+          : profile.profile?.preferred_language;
+        const preferenceFromProfile = requestedLanguage !== languageFilter;
         let navigation;
         try {
           navigation = await getExerciseNavigation(idToken, requestedLanguage);
@@ -109,7 +108,14 @@ export default function Question() {
         }
         if (!active) return;
         setSelectedLanguage(navigation.selected_language);
-        setAvailableLanguages(navigation.available_languages);
+        const languagesFromProfile = navigation.available_languages.filter((language) =>
+          profileLanguages.includes(language),
+        );
+        setAvailableLanguages(
+          languagesFromProfile.length > 0
+            ? languagesFromProfile
+            : navigation.available_languages,
+        );
         const baseHistory = Array.from(
           new Set([...navigation.previous_question_ids, navigation.current_question_id]),
         );
