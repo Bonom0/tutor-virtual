@@ -391,7 +391,7 @@ export default function Question() {
               onClick={() => void handleNextExercise()}
               className="w-fit rounded-lg bg-tutor px-5 py-2.5 text-sm font-medium text-white transition hover:bg-tutor-dark"
             >
-              Retornar à próxima questão
+              Próxima questão
             </button>
           )}
           {historyIndex === questionHistory.length - 1 &&
@@ -402,7 +402,7 @@ export default function Question() {
               onClick={() => void handleNextExercise()}
               className="w-fit rounded-lg bg-tutor px-5 py-2.5 text-sm font-medium text-white transition hover:bg-tutor-dark"
             >
-              Próximo exercício
+              Próxima questão
             </button>
           )}
           {historyIndex === questionHistory.length - 1 &&

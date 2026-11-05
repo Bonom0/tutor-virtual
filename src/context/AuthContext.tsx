@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -37,6 +38,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await initializeApiProfile(credential.user);
   };
 
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth, email);
+  };
+
   const signInWithGoogle = async () => {
     const credential = await signInWithPopup(auth, googleProvider);
     await initializeApiProfile(credential.user);
@@ -48,7 +53,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, signUpWithEmail, signInWithEmail, signInWithGoogle, logout }}
+      value={{
+        user,
+        loading,
+        signUpWithEmail,
+        signInWithEmail,
+        resetPassword,
+        signInWithGoogle,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -7,14 +7,16 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuth();
+  const { signInWithEmail, signUpWithEmail, resetPassword, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    setNotice(null);
     setSubmitting(true);
     try {
       if (mode === 'signin') {
@@ -33,6 +35,7 @@ export default function Login() {
 
   const handleGoogle = async () => {
     setError(null);
+    setNotice(null);
     setSubmitting(true);
     try {
       await signInWithGoogle();
@@ -40,6 +43,31 @@ export default function Login() {
     } catch (err) {
       console.error('[Login] erro no login com Google:', err);
       setError(traduzErro(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    const normalizedEmail = email.trim();
+    setError(null);
+    setNotice(null);
+    if (!normalizedEmail) {
+      setError('Informe seu email para receber o link de redefinição.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await resetPassword(normalizedEmail);
+      setNotice(PASSWORD_RESET_NOTICE);
+    } catch (err) {
+      console.error('[Login] erro ao solicitar redefinição de senha:', err);
+      if (firebaseErrorCode(err) === 'auth/user-not-found') {
+        setNotice(PASSWORD_RESET_NOTICE);
+      } else {
+        setError(traduzErro(err));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -99,9 +127,21 @@ export default function Login() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-graphite mb-1">
-                Senha
-              </label>
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <label htmlFor="password" className="block text-sm font-medium text-graphite">
+                  Senha
+                </label>
+                {mode === 'signin' && (
+                  <button
+                    type="button"
+                    onClick={() => void handlePasswordReset()}
+                    disabled={submitting}
+                    className="text-xs font-medium text-tutor hover:underline disabled:opacity-60"
+                  >
+                    Esqueceu a senha?
+                  </button>
+                )}
+              </div>
               <input
                 id="password"
                 type="password"
@@ -117,8 +157,14 @@ export default function Login() {
             </div>
 
             {error && (
-              <p className="text-sm text-marker bg-marker/10 border border-marker/30 rounded-lg px-3 py-2">
+              <p role="alert" className="text-sm text-marker bg-marker/10 border border-marker/30 rounded-lg px-3 py-2">
                 {error}
+              </p>
+            )}
+
+            {notice && (
+              <p role="status" className="rounded-lg border border-tutor/30 bg-tutor/10 px-3 py-2 text-sm text-tutor-dark">
+                {notice}
               </p>
             )}
 
@@ -152,7 +198,11 @@ export default function Login() {
           <p className="text-center text-sm text-graphite-soft mt-8">
             {mode === 'signin' ? 'Ainda nao tem conta?' : 'Ja tem uma conta?'}{' '}
             <button
-              onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
+              onClick={() => {
+                setMode(mode === 'signin' ? 'signup' : 'signin');
+                setError(null);
+                setNotice(null);
+              }}
               className="text-tutor font-medium hover:underline"
             >
               {mode === 'signin' ? 'Criar conta' : 'Entrar'}
@@ -164,8 +214,15 @@ export default function Login() {
   );
 }
 
+const PASSWORD_RESET_NOTICE =
+  'Se existir uma conta com este email, você receberá um link para redefinir a senha.';
+
+function firebaseErrorCode(err: unknown): string {
+  return (err as { code?: string })?.code ?? '';
+}
+
 function traduzErro(err: unknown): string {
-  const code = (err as { code?: string })?.code ?? '';
+  const code = firebaseErrorCode(err);
   const map: Record<string, string> = {
     'auth/email-already-in-use': 'Este email ja esta cadastrado.',
     'auth/invalid-email': 'Email invalido.',
@@ -177,6 +234,8 @@ function traduzErro(err: unknown): string {
     'auth/unauthorized-domain': 'Este dominio nao esta autorizado no Firebase (Authentication > Settings > Authorized domains).',
     'auth/popup-blocked': 'O navegador bloqueou o popup de login. Permita popups para este site.',
     'auth/operation-not-allowed': 'O provedor Google nao esta ativado no Firebase (Authentication > Sign-in method).',
+    'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
+    'auth/network-request-failed': 'Não foi possível conectar ao Firebase. Verifique sua conexão.',
   };
   return map[code] ?? `Ocorreu um erro${code ? ` (${code})` : ''}. Veja o console (F12) para detalhes.`;
 }
