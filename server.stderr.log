@@ -1,0 +1,87 @@
+19:23:06 [vite] (client) [console.error] [Login] erro no login/cadastro por email: ApiError: Serviço de autenticação indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async initializeApiProfile (http://localhost:5173/src/context/AuthContext.tsx:10:2)
+    at async signInWithEmail (http://localhost:5173/src/context/AuthContext.tsx:29:3)
+    at async handleSubmit (http://localhost:5173/src/pages/Login.tsx:24:5)
+19:26:54 [vite] (client) [console.error] [Chat] Erro ao listar conversas: ApiError: Serviço de conversas indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async http://localhost:5173/src/pages/Chat.tsx:48:21
+19:26:54 [vite] (client) [console.error] [Chat] Erro ao listar conversas: ApiError: Serviço de conversas indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async http://localhost:5173/src/pages/Chat.tsx:48:21
+19:26:54 [vite] (client) [console.error] [Chat] Erro ao listar conversas: ApiError: Serviço de conversas indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async http://localhost:5173/src/pages/Chat.tsx:48:21
+19:26:54 [vite] (client) [console.error] [Chat] Erro ao listar conversas: ApiError: Serviço de conversas indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async http://localhost:5173/src/pages/Chat.tsx:48:21
+19:27:52 [vite] (client) [console.error] [Chat] Erro ao listar conversas: ApiError: Serviço de conversas indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async http://localhost:5173/src/pages/Chat.tsx:48:21
+19:27:53 [vite] (client) [console.error] [Chat] Erro ao listar conversas: ApiError: Serviço de conversas indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async http://localhost:5173/src/pages/Chat.tsx:48:21
+19:27:55 [vite] (client) [console.error] [Chat] Erro ao listar conversas: ApiError: Serviço de conversas indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async http://localhost:5173/src/pages/Chat.tsx:48:21
+19:27:56 [vite] (client) [console.error] [Chat] Erro ao listar conversas: ApiError: Serviço de conversas indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async http://localhost:5173/src/pages/Chat.tsx:48:21
+19:28:48 [vite] (client) [console.error] [Chat] Erro ao listar conversas: ApiError: Serviço de conversas indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async http://localhost:5173/src/pages/Chat.tsx:48:21
+19:28:48 [vite] (client) [console.error] [Chat] Erro ao listar conversas: ApiError: Serviço de conversas indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async http://localhost:5173/src/pages/Chat.tsx:48:21
+19:28:50 [vite] (client) [console.error] [Progress] erro ao carregar progresso: ApiError: Serviço de progresso indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async Promise.all (index 0)
+    at async http://localhost:5173/src/pages/Progress.tsx:32:40
+19:28:50 [vite] (client) [console.error] [Progress] erro ao carregar progresso: ApiError: Serviço de progresso indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async Promise.all (index 0)
+    at async http://localhost:5173/src/pages/Progress.tsx:32:40
+19:28:59 [vite] (client) [console.error] [Question] erro ao restaurar navegação: ApiError: Serviço de navegação indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async restoreNavigation (http://localhost:5173/src/pages/Question.tsx:76:19)
+19:29:02 [vite] (client) [console.error] [Question] erro ao restaurar navegação: ApiError: Serviço de navegação indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async restoreNavigation (http://localhost:5173/src/pages/Question.tsx:76:19)
+19:35:08 [vite] (client) [console.error] [Progress] erro ao carregar progresso: ApiError: Serviço de progresso indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async Promise.all (index 0)
+    at async http://localhost:5173/src/pages/Progress.tsx:32:40
+19:35:08 [vite] (client) [console.error] [Progress] erro ao carregar progresso: ApiError: Serviço de progresso indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async Promise.all (index 0)
+    at async http://localhost:5173/src/pages/Progress.tsx:32:40
+19:35:08 [vite] (client) [console.error] [Progress] erro ao carregar progresso: ApiError: Serviço de progresso indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async Promise.all (index 0)
+    at async http://localhost:5173/src/pages/Progress.tsx:32:40
+19:35:08 [vite] (client) [console.error] [Progress] erro ao carregar progresso: ApiError: Serviço de progresso indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async Promise.all (index 0)
+    at async http://localhost:5173/src/pages/Progress.tsx:32:40
+19:36:01 [vite] (client) [console.error] [Progress] erro ao carregar progresso: ApiError: Serviço de progresso indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async Promise.all (index 0)
+    at async http://localhost:5173/src/pages/Progress.tsx:32:40
+19:36:01 [vite] (client) [console.error] [Progress] erro ao carregar progresso: ApiError: Serviço de progresso indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async Promise.all (index 0)
+    at async http://localhost:5173/src/pages/Progress.tsx:32:40
+19:36:04 [vite] (client) [console.error] [Progress] erro ao carregar progresso: ApiError: Serviço de progresso indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async Promise.all (index 0)
+    at async http://localhost:5173/src/pages/Progress.tsx:32:40
+19:36:04 [vite] (client) [console.error] [Progress] erro ao carregar progresso: ApiError: Serviço de progresso indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async Promise.all (index 0)
+    at async http://localhost:5173/src/pages/Progress.tsx:32:40
+19:36:06 [vite] (client) [console.error] [Question] erro ao restaurar navegação: ApiError: Serviço de navegação indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async restoreNavigation (http://localhost:5173/src/pages/Question.tsx:76:19)
+19:36:20 [vite] (client) [console.error] [Question] erro ao restaurar navegação: ApiError: Serviço de navegação indisponível
+    at requestApi (http://localhost:5173/src/services/api.ts:176:9)
+    at async restoreNavigation (http://localhost:5173/src/pages/Question.tsx:76:19)

@@ -1,0 +1,18 @@
+[32m✔[0m [33mConsole Ninja[0m extension is connected to [33mVite[0m, see [36mhttps://tinyurl.com/2vt8jxzw[0m
+
+  VITE v8.3.5  ready in 958 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://10.118.1.103:5173/  Wi-Fi 2
+  ➜  press h + enter to show help
+19:55:34 [vite] (client) hmr update /src/pages/PerfilPedagogico.tsx, /src/index.css
+19:55:34 [vite] (client) hmr update /src/index.css
+19:55:34 [vite] (client) hmr update /src/components/ErrorBoundary.tsx, /src/index.css
+19:55:34 [vite] (client) page reload index.html
+19:55:34 [vite] (client) hmr update /src/index.css
+19:55:34 [vite] (client) hmr update /src/pages/Question.tsx, /src/index.css
+19:55:34 [vite] (client) hmr update /src/pages/Chat.tsx, /src/index.css
+19:55:34 [vite] (client) hmr update /src/pages/Progress.tsx, /src/index.css
+19:55:34 [vite] (client) hmr update /src/pages/Login.tsx, /src/index.css
+19:55:34 [vite] (client) hmr update /src/index.css, /src/context/AuthContext.tsx, /src/components/RotaPerfilCompleto.tsx, /src/components/rotaperfilcompleto.tsx, /src/pages/PerfilPedagogico.tsx, /src/pages/perfilpedagogico.tsx, /src/pages/Chat.tsx, /src/pages/chat.tsx, /src/pages/Progress.tsx, /src/pages/progress.tsx, /src/pages/Question.tsx, /src/pages/question.tsx
+19:55:34 [vite] (client) hmr update /src/components/RotaPerfilCompleto.tsx, /src/index.css
